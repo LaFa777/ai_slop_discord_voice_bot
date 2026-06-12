@@ -15,7 +15,10 @@ class Config:
         self.device = os.getenv("WHISPER_DEVICE", "cuda")
         self.compute_type = os.getenv("WHISPER_COMPUTE_TYPE", "float16")
         self.tts_voice = os.getenv("TTS_VOICE", "ru-RU-DariyaNeural")
+        self.llm_provider = os.getenv("LLM_PROVIDER", "deepseek")
         self.llm_model = os.getenv("LLM_MODEL", "deepseek_v4_flash")
+        self.deepseek_host = os.getenv("DEEPSEEK_HOST", "https://api.deepseek.com")
+        self.ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
 
 config = Config()

@@ -7,6 +7,7 @@
 #   "davey>=0.1.0",
 #   "faster-whisper>=1.0.0",
 #   "edge-tts>=6.0.0",
+#   "ollama>=0.4.0",
 #   "openai>=1.0.0",
 #   "python-dotenv>=1.0.0",
 #   "numpy>=1.24.0",
@@ -22,7 +23,7 @@ import discord
 from discord.ext import voice_recv
 
 from src.config import config
-from src.llm.responder import LLMResponder
+from src.llm import create_llm
 from src.stt.transcriber import Transcriber
 from src.tts.synthesizer import TTSSynthesizer
 from src.voice.player import VoicePlayer
@@ -43,7 +44,7 @@ class DiscorderBot(discord.Client):
 
         self.tree = discord.app_commands.CommandTree(self)
         self.transcriber: Transcriber | None = None
-        self.llm: LLMResponder | None = None
+        self.llm = None
         self.tts: TTSSynthesizer | None = None
         self.player: VoicePlayer | None = None
         self.recorder: SpeechRecognitionSink | None = None
@@ -57,9 +58,12 @@ class DiscorderBot(discord.Client):
             device=config.device,
             compute_type=config.compute_type,
         )
-        self.llm = LLMResponder(
-            config.deepseek_api_key,
+        self.llm = create_llm(
+            provider=config.llm_provider,
+            api_key=config.deepseek_api_key,
             model=config.llm_model,
+            deepseek_host=config.deepseek_host,
+            ollama_host=config.ollama_host,
         )
         self.tts = TTSSynthesizer(voice=config.tts_voice)
         self.player = VoicePlayer()
@@ -169,7 +173,7 @@ async def main() -> None:
     if not config.discord_token:
         logger.error("DISCORD_TOKEN not set in .env")
         return
-    if not config.deepseek_api_key:
+    if config.llm_provider == "deepseek" and not config.deepseek_api_key:
         logger.error("DEEPSEEK_API_KEY not set in .env")
         return
 
