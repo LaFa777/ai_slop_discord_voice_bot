@@ -25,7 +25,7 @@ from discord.ext import voice_recv
 from src.config import config
 from src.llm import create_llm, ConversationManager
 from src.stt.transcriber import Transcriber
-from src.tts.synthesizer import TTSSynthesizer
+from src.tts import create_tts, TTSProvider
 from src.voice.player import VoicePlayer
 from src.voice.recorder import SpeechRecognitionSink
 
@@ -45,7 +45,7 @@ class DiscorderBot(discord.Client):
         self.tree = discord.app_commands.CommandTree(self)
         self.transcriber: Transcriber | None = None
         self.conversations: ConversationManager | None = None
-        self.tts: TTSSynthesizer | None = None
+        self.tts: TTSProvider | None = None
         self.player: VoicePlayer | None = None
         self.recorder: SpeechRecognitionSink | None = None
         self.voice_client: voice_recv.VoiceRecvClient | None = None
@@ -70,7 +70,11 @@ class DiscorderBot(discord.Client):
             max_messages=config.llm_history_size,
             ttl_seconds=config.llm_conversation_ttl,
         )
-        self.tts = TTSSynthesizer(voice=config.tts_voice)
+        self.tts = create_tts(
+            provider=config.tts_provider,
+            voice=config.tts_voice,
+            silero_speaker=config.tts_silero_speaker,
+        )
         self.player = VoicePlayer()
 
         @self.tree.command(name="join", description="Подключиться к голосовому каналу")
