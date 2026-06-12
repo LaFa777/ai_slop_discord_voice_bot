@@ -14,14 +14,16 @@ class OllamaResponder(LLMProvider):
     def get_system_prompt(self) -> str:
         return "/no_think " + super().get_system_prompt()
 
-    async def respond(self, user_text: str) -> str:
+    async def respond(self, user_text: str, history: list[dict] | None = None) -> str:
         try:
+            messages = [{"role": "system", "content": self.get_system_prompt()}]
+            if history:
+                messages.extend(history)
+            messages.append({"role": "user", "content": user_text})
+
             response = await self.client.chat(
                 model=self.model,
-                messages=[
-                    {"role": "system", "content": self.get_system_prompt()},
-                    {"role": "user", "content": user_text},
-                ],
+                messages=messages,
                 think=False,
                 options={"temperature": 0.7, "num_predict": 500},
             )

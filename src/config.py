@@ -19,6 +19,8 @@ class Config:
         self.llm_model = os.getenv("LLM_MODEL", "deepseek_v4_flash")
         self.deepseek_host = os.getenv("DEEPSEEK_HOST", "https://api.deepseek.com")
         self.ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        self.llm_history_size = int(os.getenv("LLM_HISTORY_SIZE", "10"))
+        self.llm_conversation_ttl = int(os.getenv("LLM_CONVERSATION_TTL", "600"))
 
 
 config = Config()

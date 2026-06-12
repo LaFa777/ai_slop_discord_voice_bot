@@ -1,4 +1,5 @@
 from .base import LLMProvider
+from .conversation import ConversationManager
 from .deepseek import DeepSeekResponder
 from .ollama import OllamaResponder
 

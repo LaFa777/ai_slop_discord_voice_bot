@@ -23,7 +23,7 @@ import discord
 from discord.ext import voice_recv
 
 from src.config import config
-from src.llm import create_llm
+from src.llm import create_llm, ConversationManager
 from src.stt.transcriber import Transcriber
 from src.tts.synthesizer import TTSSynthesizer
 from src.voice.player import VoicePlayer
@@ -44,7 +44,7 @@ class DiscorderBot(discord.Client):
 
         self.tree = discord.app_commands.CommandTree(self)
         self.transcriber: Transcriber | None = None
-        self.llm = None
+        self.conversations: ConversationManager | None = None
         self.tts: TTSSynthesizer | None = None
         self.player: VoicePlayer | None = None
         self.recorder: SpeechRecognitionSink | None = None
@@ -58,12 +58,17 @@ class DiscorderBot(discord.Client):
             device=config.device,
             compute_type=config.compute_type,
         )
-        self.llm = create_llm(
+        llm = create_llm(
             provider=config.llm_provider,
             api_key=config.deepseek_api_key,
             model=config.llm_model,
             deepseek_host=config.deepseek_host,
             ollama_host=config.ollama_host,
+        )
+        self.conversations = ConversationManager(
+            llm=llm,
+            max_messages=config.llm_history_size,
+            ttl_seconds=config.llm_conversation_ttl,
         )
         self.tts = TTSSynthesizer(voice=config.tts_voice)
         self.player = VoicePlayer()
@@ -93,9 +98,12 @@ class DiscorderBot(discord.Client):
                 if self.voice_client.is_playing():
                     self.voice_client.stop_playing()
                 self.voice_client.stop_listening()
+                channel_id = self.voice_client.channel.id
                 await self.voice_client.disconnect()
                 self.voice_client = None
                 self.recorder = None
+                if self.conversations:
+                    self.conversations.clear(channel_id)
                 await interaction.response.send_message("Отключился.", ephemeral=True)
             else:
                 await interaction.response.send_message("Я не в голосовом канале.", ephemeral=True)
@@ -147,7 +155,8 @@ class DiscorderBot(discord.Client):
                 return
 
             logger.info("Wake word '%s' matched, calling LLM…", hit)
-            response = await self.llm.respond(text)
+            channel_id = self.voice_client.channel.id
+            response = await self.conversations.respond(channel_id, text)
             logger.info("LLM response: %s", response)
 
             if not response.strip():

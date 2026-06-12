@@ -11,14 +11,16 @@ class DeepSeekResponder(LLMProvider):
         self.client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         self.model = model
 
-    async def respond(self, user_text: str) -> str:
+    async def respond(self, user_text: str, history: list[dict] | None = None) -> str:
         try:
+            messages = [{"role": "system", "content": self.get_system_prompt()}]
+            if history:
+                messages.extend(history)
+            messages.append({"role": "user", "content": user_text})
+
             response = await self.client.chat.completions.create(
                 model=self.model,
-                messages=[
-                    {"role": "system", "content": self.get_system_prompt()},
-                    {"role": "user", "content": user_text},
-                ],
+                messages=messages,
                 temperature=0.7,
                 max_tokens=500,
                 extra_body={"thinking": {"type": "disabled"}},
