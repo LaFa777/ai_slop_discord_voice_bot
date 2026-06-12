@@ -17,6 +17,8 @@ class Config:
         self.tts_provider = os.getenv("TTS_PROVIDER", "edge")
         self.tts_voice = os.getenv("TTS_VOICE", "ru-RU-DariyaNeural")
         self.tts_silero_speaker = os.getenv("TTS_SILERO_SPEAKER", "eugene")
+        self.omnivoice_ref_audio = os.getenv("OMNIVOICE_REF_AUDIO", "sample.wav")
+        self.omnivoice_ref_text = os.getenv("OMNIVOICE_REF_TEXT", "") or None
         self.llm_provider = os.getenv("LLM_PROVIDER", "deepseek")
         self.llm_model = os.getenv("LLM_MODEL", "deepseek_v4_flash")
         self.deepseek_host = os.getenv("DEEPSEEK_HOST", "https://api.deepseek.com")

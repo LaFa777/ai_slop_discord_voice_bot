@@ -1,26 +1,12 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#   "discord.py[voice] @ git+https://github.com/Rapptz/discord.py.git@master",
-#   "discord-ext-voice-recv @ git+https://github.com/rdphillips7/discord-ext-voice-recv.git@main",
-#   "davey>=0.1.0",
-#   "faster-whisper>=1.0.0",
-#   "edge-tts>=6.0.0",
-#   "ollama>=0.4.0",
-#   "openai>=1.0.0",
-#   "python-dotenv>=1.0.0",
-#   "numpy>=1.24.0",
-#   "scipy>=1.10.0",
-#   "torch>=2.0.0",
-# ]
-# ///
-
 import asyncio
 import logging
+import os
 
 import discord
+import numpy as np
+import soundfile as sf
 from discord.ext import voice_recv
+from scipy import signal
 
 from src.config import config
 from src.llm import create_llm, ConversationManager
@@ -34,6 +20,15 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger("discorder")
+
+
+def _transcribe_ref_wav(transcriber: Transcriber, wav_path: str) -> str:
+    audio, sr = sf.read(wav_path, dtype="float32")
+    if audio.ndim > 1:
+        audio = audio.mean(axis=1)
+    if sr != 48000:
+        audio = signal.resample(audio, int(len(audio) * 48000 / sr))
+    return transcriber.transcribe(audio.astype(np.float32))
 
 
 class DiscorderBot(discord.Client):
@@ -58,6 +53,19 @@ class DiscorderBot(discord.Client):
             device=config.device,
             compute_type=config.compute_type,
         )
+        if config.tts_provider == "omnivoice" and config.omnivoice_ref_audio and not config.omnivoice_ref_text:
+            ref_path = config.omnivoice_ref_audio
+            if not os.path.isabs(ref_path):
+                ref_path = os.path.join(os.path.dirname(__file__), ref_path)
+            if os.path.isfile(ref_path):
+                try:
+                    ref_text = _transcribe_ref_wav(self.transcriber, ref_path)
+                    config.omnivoice_ref_text = ref_text
+                    logger.info("OmniVoice ref audio transcribed: %r", ref_text[:80])
+                except Exception:
+                    logger.warning("Failed to transcribe ref audio — OmniVoice will use internal Whisper", exc_info=True)
+            else:
+                logger.warning("OmniVoice ref audio not found: %s", ref_path)
         llm = create_llm(
             provider=config.llm_provider,
             api_key=config.deepseek_api_key,
@@ -74,6 +82,8 @@ class DiscorderBot(discord.Client):
             provider=config.tts_provider,
             voice=config.tts_voice,
             silero_speaker=config.tts_silero_speaker,
+            omnivoice_ref_audio=config.omnivoice_ref_audio,
+            omnivoice_ref_text=config.omnivoice_ref_text,
         )
         self.player = VoicePlayer()
 

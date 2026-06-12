@@ -4,7 +4,7 @@ echo ============================
 echo  Discorder - Voice AI Bot
 echo ============================
 echo.
-uv run main.py
+.venv\Scripts\python.exe main.py
 if %ERRORLEVEL% neq 0 (
     echo.
     echo [ОШИБКА] Бот упал с кодом %ERRORLEVEL%
